@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>Merry Christmas</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000;
+            font-family: 'Brush Script MT', cursive, sans-serif;
+        }
+
+        canvas {
+            display: block;
+        }
+
+        #text-overlay {
+            position: absolute;
+            top: 20%;
+            left: 10%;
+            color: #fff;
+            font-size: 5em;
+            text-shadow: 0 0 10px #fff, 0 0 20px #ffcccc;
+            pointer-events: none;
+        }
+    </style>
+</head>
+
+<body>
+    <canvas id="christmasCanvas"></canvas>
+    <div id="text-overlay">Merry Christmas</div>
+
+    <script>
+        const canvas = document.getElementById('christmasCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height, particles = [], snowflakes = [], time = 0;
+
+        function resize() {
+            width = canvas.width = window.innerWidth;
+            height = canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resize); resize();
+
+        class Particle {
+            constructor(x, y, z, color, size) {
+                this.x = x; this.y = y; this.z = z; this.baseX = x; this.baseY = y; this.baseZ = z;
+                this.color = color; this.size = size;
+                this.blinkOffset = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * 0.02 + 0.01;
+            }
+            update(rotationY) {
+                let x = this.baseX, z = this.baseZ;
+                let x1 = x * Math.cos(rotationY) - z * Math.sin(rotationY);
+                let z1 = z * Math.cos(rotationY) + x * Math.sin(rotationY);
+                this.x = x1; this.z = z1; this.blinkOffset += this.speed;
+            }
+            draw() {
+                const perspective = 800, scale = perspective / (perspective + this.z + 500);
+                const x2d = width / 2 + this.x * scale;
+                const y2d = height / 2 + this.y * scale;          // 这里 y 为正 → 树已经扶正
+                const size2d = this.size * scale;
+                if (scale > 0) {
+                    const alpha = (Math.sin(this.blinkOffset) + 1) / 2 * 0.8 + 0.2;
+                    ctx.fillStyle = this.color.replace('ALPHA', alpha.toFixed(2));
+                    ctx.beginPath(); ctx.arc(x2d, y2d, size2d, 0, Math.PI * 2); ctx.fill();
+                }
+            }
+        }
+
+        /* 统一放大 + 抬高 */
+        // function createTree() {
+        //     const scale = 1.35;                  // 1. 放大系数
+        //     const offsetY = -120;                // 2. 负数 = 整体抬高
+
+        //     const treeColor = 'rgba(255,200,200,ALPHA)';
+        //     const heartColor = 'rgba(255,150,150,ALPHA)';
+
+        //     // 1) 树身
+        //     for (let i = 0; i < 2500; i++) {
+        //         const t = i / 2500;
+        //         const angle = t * Math.PI * 40;
+        //         const radius = t * 200 * scale;           // 半径放大
+        //         const x = radius * Math.cos(angle);
+        //         const y = t * 400 * scale + offsetY;      // 高度放大 & 抬高
+        //         const z = radius * Math.sin(angle);
+        //         particles.push(new Particle(x, y, z, treeColor, Math.random() * 2 + 1));
+        //     }
+
+        //     // 2) 心形树顶（同步放大 & 上移）
+        //     const heartSize = 1.5 * scale;
+        //     const heartY0 = offsetY - 30 * scale + heartSize * 1.8;
+        //     for (let i = 0; i < 400; i++) {
+        //         const t = (i / 400) * Math.PI * 2;
+        //         const x = 16 * Math.pow(Math.sin(t), 3) * heartSize;
+        //         const y = -(13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * heartSize;
+        //         const z = 0;
+        //         particles.push(new Particle(x, heartY0 + y, z, heartColor, Math.random() * 2.5 + 1.5));
+        //     }
+        // }
+
+        // function createGround() {
+        //     const groundColor = 'rgba(255,255,255,ALPHA)';
+        //     for (let i = 0; i < 1500; i++) {
+        //         const angle = Math.random() * Math.PI * 2, radius = 200 + Math.random() * 600;
+        //         const x = radius * Math.cos(angle);
+        //         const y = 45 + 400 + (Math.random() - 0.5) * 10; // ③ 地面同步下移
+        //         const z = radius * Math.sin(angle);
+        //         particles.push(new Particle(x, y, z, groundColor, Math.random() * 1.5 + 0.5));
+        //     }
+        // }
+
+        /* ----------  加浓底盘 + 加宽加厚树 ---------- */
+        function createTree() {
+            const scale = 1.45;                  // 树整体放大（加宽）
+            const offsetY = -120;                // 抬高不变
+            const treeColor = 'rgba(255,200,200,ALPHA)';
+            const heartColor = 'rgba(255,150,150,ALPHA)';
+
+            // 1) 树身 —— 粒子数 2500→4000，单点尺寸 +0.8
+            for (let i = 0; i < 4000; i++) {
+                const t = i / 4000;
+                const angle = t * Math.PI * 40;
+                const radius = t * 200 * scale;           // 半径加宽
+                const x = radius * Math.cos(angle);
+                const y = t * 400 * scale + offsetY;
+                const z = radius * Math.sin(angle);
+                particles.push(new Particle(x, y, z, treeColor, Math.random() * 2.8 + 1.8)); // +0.8
+            }
+
+            // 2) 心形树顶（同比例放大）
+            const heartSize = 1.5 * scale;
+            const heartY0 = offsetY + 400 * scale + heartSize * 1.8;
+            for (let i = 0; i < 400; i++) {
+                const t = (i / 400) * Math.PI * 2;
+                const x = 16 * Math.pow(Math.sin(t), 3) * heartSize;
+                const y = -620 - (13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t)) * heartSize;
+                const z = 0;
+                particles.push(new Particle(x, heartY0 + y, z, heartColor, Math.random() * 2.5 + 1.5));
+            }
+        }
+
+        function createGround() {
+            const groundColor = 'rgba(255,255,255,ALPHA)';
+            // 底盘粒子 1500→3750，单点尺寸 +1，颜色更白
+            for (let i = 0; i < 3750; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const radius = 200 + Math.random() * 600;
+                const x = radius * Math.cos(angle);
+                const y = 65 + 400 + (Math.random() - 0.5) * 10;
+                const z = radius * Math.sin(angle);
+                particles.push(new Particle(x, y, z, groundColor, Math.random() * 2.5 + 1.5)); // +1
+            }
+        }
+
+        /* ---------- 背景六角雪花（下落版） ---------- */
+        let staticSnow = [];
+        class StaticSnow {
+            constructor() {
+                this.x = Math.random() * width;
+                this.y = Math.random() * height;          // 全屏掉落起点
+                this.size = Math.random() * 12 + 3;
+                this.speed = Math.random() * 1.2 + 0.6;   // 下落速度
+                this.rot = Math.random() * Math.PI * 2;
+                this.rotSpeed = (Math.random() - 0.5) * 0.01;
+            }
+            update() {
+                this.y += this.speed;                     // 下落
+                this.rot += this.rotSpeed;                // 微旋转
+                if (this.y > height + this.size) this.y = -this.size; // 循环回顶部
+            }
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rot);
+                ctx.strokeStyle = 'rgba(255,255,255,0.9)';
+                ctx.lineWidth = 2;
+                const r = this.size;
+                for (let i = 0; i < 6; i++) {
+                    ctx.rotate(Math.PI / 3);
+                    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(0, -r); ctx.stroke();
+                    ctx.beginPath(); ctx.moveTo(0, -r * 0.6); ctx.lineTo(-r * 0.3, -r * 0.9); ctx.moveTo(0, -r * 0.6); ctx.lineTo(r * 0.3, -r * 0.9); ctx.stroke();
+                }
+                ctx.restore();
+            }
+        }
+
+        /* ---------- 一起下落 ---------- */
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            time += 0.005;
+            const rotationY = time;
+            particles.forEach(p => { p.update(rotationY); p.draw(); });
+            /* 雪花一起下落 */
+            staticSnow.forEach(s => { s.update(); s.draw(); });
+            createSnow(); drawSnow();
+            requestAnimationFrame(animate);
+        }
+
+        /* ---------- 初始化时多放点雪花 ---------- */
+        function init() {
+            createTree(); createGround();
+            for (let i = 0; i < 500; i++) staticSnow.push(new StaticSnow()); // 背景六角雪花
+            animate();
+        }
+
+        /* 雪花相关 */
+        function createSnow() {
+            if (snowflakes.length < 200) snowflakes.push({ x: Math.random() * width, y: Math.random() * -height, size: Math.random() * 3 + 1, speed: Math.random() * 2 + 1, opacity: Math.random() * 0.5 + 0.3 });
+        }
+        function drawSnow() {
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            snowflakes.forEach((f, idx) => {
+                ctx.beginPath(); ctx.arc(f.x, f.y, f.size, 0, Math.PI * 2); ctx.fill();
+                f.y += f.speed; if (f.y > height) snowflakes.splice(idx, 1);
+            });
+        }
+
+        function animate() {
+            ctx.clearRect(0, 0, width, height);
+            time += 0.005; const rotationY = time;
+            particles.forEach(p => { p.update(rotationY); p.draw(); });
+            createSnow(); drawSnow();
+            requestAnimationFrame(animate);
+        }
+
+        init();
+        function init() {
+            createTree(); createGround(); animate();
+        }
+    </script>
+</body>
+
+</html>
